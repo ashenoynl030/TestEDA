@@ -54,3 +54,39 @@ export interface DashboardStats {
   byPriority: Record<Priority, number>;
   followUpCount: number;
 }
+
+export interface UploadedDocument {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: string;
+  textContent: string;
+  status: 'pending' | 'assessing' | 'assessed' | 'error';
+  errorMessage?: string;
+}
+
+export interface AssessedRequirement {
+  id: string;
+  extractedText: string;
+  summary: string;
+  featureTags: FeatureTag[];
+  affectedModules: AffectedModule[];
+  gapClassification: GapClassification;
+  baselineReference: string;
+  roadmapSignal: string;
+  confidence: 'High' | 'Medium' | 'Low';
+}
+
+export interface DocumentAssessment {
+  documentId: string;
+  fileName: string;
+  assessedAt: string;
+  requirements: AssessedRequirement[];
+  summary: {
+    total: number;
+    byGap: Record<string, number>;
+    featureGapCount: number;
+    highConfidenceCount: number;
+  };
+}

@@ -5,6 +5,7 @@ import RequestList from './components/RequestList';
 import RequestDetail from './components/RequestDetail';
 import GapAnalysis from './components/GapAnalysis';
 import RoadmapView from './components/RoadmapView';
+import UploadAssess from './components/UploadAssess';
 import { sampleRequests } from './data/sampleRequests';
 import { FeatureTag, GapClassification, AffectedModule, Priority } from './types';
 import {
@@ -12,6 +13,7 @@ import {
   ListChecks,
   Search,
   Map,
+  Upload,
   Menu,
   X,
 } from 'lucide-react';
@@ -48,6 +50,7 @@ export default function App() {
     { to: '/requests', label: 'Requests', icon: ListChecks },
     { to: '/gap-analysis', label: 'Gap Analysis', icon: Search },
     { to: '/roadmap', label: 'Roadmap', icon: Map },
+    { to: '/upload', label: 'Upload & Assess', icon: Upload },
   ];
 
   return (
@@ -133,6 +136,7 @@ export default function App() {
           <Route path="/requests/:id" element={<RequestDetail requests={sampleRequests} />} />
           <Route path="/gap-analysis" element={<GapAnalysis requests={sampleRequests} />} />
           <Route path="/roadmap" element={<RoadmapView requests={sampleRequests} />} />
+          <Route path="/upload" element={<UploadAssess />} />
         </Routes>
       </main>
 
