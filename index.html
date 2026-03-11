@@ -5,6 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Arcadis EDA Customer Request Tracker</title>
+    <script>
+      // Restore path after 404.html redirect on GitHub Pages
+      (function () {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, null, redirect);
+        }
+        // Handle ?p= query param from 404.html redirect
+        var search = window.location.search;
+        if (search && search.slice(1, 3) === 'p=') {
+          var decoded = search.slice(3).replace(/~and~/g, '&');
+          history.replaceState(null, null, '/' + decoded + window.location.hash);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
