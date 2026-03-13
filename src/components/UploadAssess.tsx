@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
-import { Upload, FileText, AlertCircle, CheckCircle, ChevronDown, ChevronUp, Trash2, Info, ClipboardPaste } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle, ChevronDown, ChevronUp, Trash2, Info, ClipboardPaste, Globe } from 'lucide-react';
 import { UploadedDocument, DocumentAssessment, GapClassification } from '../types';
 import { assessDocument } from '../data/baselineAssessor';
+import SharePointBrowser from './SharePointBrowser';
 
 const GAP_COLORS: Record<GapClassification, string> = {
   'No Gap': '#10B981',
@@ -30,6 +31,8 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+type UploadTab = 'local' | 'sharepoint';
+
 export default function UploadAssess() {
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [assessments, setAssessments] = useState<DocumentAssessment[]>([]);
@@ -38,6 +41,7 @@ export default function UploadAssess() {
   const [pasteMode, setPasteMode] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pasteName, setPasteName] = useState('');
+  const [activeTab, setActiveTab] = useState<UploadTab>('local');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const readFileAsText = useCallback((file: File): Promise<string> => {
@@ -186,6 +190,49 @@ export default function UploadAssess() {
     if (expandedDoc === docId) setExpandedDoc(null);
   }, [expandedDoc]);
 
+  const handleSharePointFile = useCallback(async (
+    fileName: string,
+    fileSize: number,
+    fileType: string,
+    textContent: string,
+  ) => {
+    const docId = `SP-${String(documents.length + 1).padStart(3, '0')}`;
+
+    const newDoc: UploadedDocument = {
+      id: docId,
+      fileName: `[SharePoint] ${fileName}`,
+      fileType,
+      fileSize,
+      uploadedAt: new Date().toISOString(),
+      textContent,
+      status: 'assessing',
+    };
+
+    setDocuments(prev => [...prev, newDoc]);
+
+    if (textContent.trim().length < 10) {
+      setDocuments(prev =>
+        prev.map(d =>
+          d.id === docId
+            ? { ...d, status: 'error' as const, errorMessage: 'Extracted text is too short for meaningful analysis.' }
+            : d
+        )
+      );
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const assessment = assessDocument(docId, fileName, textContent);
+    setAssessments(prev => [...prev, assessment]);
+    setDocuments(prev =>
+      prev.map(d =>
+        d.id === docId ? { ...d, status: 'assessed' as const } : d
+      )
+    );
+    setExpandedDoc(docId);
+  }, [documents.length]);
+
   const getAssessment = (docId: string) => assessments.find(a => a.documentId === docId);
 
   // Aggregate stats across all assessments
@@ -210,93 +257,132 @@ export default function UploadAssess() {
         </p>
       </div>
 
-      {/* Upload Area */}
-      <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-          dragActive
-            ? 'border-arcadis-green bg-arcadis-light'
-            : 'border-gray-300 hover:border-gray-400 bg-white'
-        }`}
-        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-        onDragLeave={() => setDragActive(false)}
-        onDrop={handleDrop}
-      >
-        <Upload className="mx-auto mb-4 text-gray-400" size={40} />
-        <p className="text-gray-700 font-medium mb-1">
-          Drag & drop files here, or{' '}
+      {/* Source Tabs */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="flex border-b">
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="text-arcadis-green hover:underline font-semibold"
+            onClick={() => setActiveTab('local')}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'local'
+                ? 'border-arcadis-green text-arcadis-dark'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
           >
-            browse files
+            <Upload size={16} />
+            Local Upload
           </button>
-        </p>
-        <p className="text-xs text-gray-500 mb-3">
-          Supported: TXT, CSV, MD, JSON, XML (text-based formats for best results)
-        </p>
-        <p className="text-xs text-gray-400">
-          PDF, DOCX, and XLS files will be accepted but require pasting text content manually.
-        </p>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept={ACCEPTED_TYPES.join(',')}
-          onChange={(e) => handleFiles(e.target.files)}
-          className="hidden"
-        />
+          <button
+            onClick={() => setActiveTab('sharepoint')}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'sharepoint'
+                ? 'border-arcadis-green text-arcadis-dark'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Globe size={16} />
+            SharePoint
+          </button>
+        </div>
 
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <button
-            onClick={() => setPasteMode(!pasteMode)}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-arcadis-green transition-colors"
-          >
-            <ClipboardPaste size={16} />
-            Or paste document content directly
-          </button>
+        <div className="p-6">
+          {/* Local Upload Tab */}
+          {activeTab === 'local' && (
+            <div className="space-y-4">
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  dragActive
+                    ? 'border-arcadis-green bg-arcadis-light'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={handleDrop}
+              >
+                <Upload className="mx-auto mb-4 text-gray-400" size={40} />
+                <p className="text-gray-700 font-medium mb-1">
+                  Drag & drop files here, or{' '}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-arcadis-green hover:underline font-semibold"
+                  >
+                    browse files
+                  </button>
+                </p>
+                <p className="text-xs text-gray-500 mb-3">
+                  Supported: TXT, CSV, MD, JSON, XML (text-based formats for best results)
+                </p>
+                <p className="text-xs text-gray-400">
+                  PDF, DOCX, and XLS files will be accepted but require pasting text content manually.
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept={ACCEPTED_TYPES.join(',')}
+                  onChange={(e) => handleFiles(e.target.files)}
+                  className="hidden"
+                />
+
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => setPasteMode(!pasteMode)}
+                    className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-arcadis-green transition-colors"
+                  >
+                    <ClipboardPaste size={16} />
+                    Or paste document content directly
+                  </button>
+                </div>
+              </div>
+
+              {/* Paste Input */}
+              {pasteMode && (
+                <div className="border rounded-lg p-4 space-y-4">
+                  <h3 className="font-semibold text-gray-800">Paste Document Content</h3>
+                  <input
+                    type="text"
+                    value={pasteName}
+                    onChange={(e) => setPasteName(e.target.value)}
+                    placeholder="Document name (e.g., 'Thames Water RFP Q2 2026')"
+                    className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-arcadis-green"
+                  />
+                  <textarea
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    placeholder="Paste the full document text here. The system will extract individual requirements and assess each against the EDAP II baseline..."
+                    rows={10}
+                    className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-arcadis-green resize-y font-mono"
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400">
+                      {pasteText.length > 0 ? `${pasteText.length} characters` : ''}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setPasteMode(false); setPasteText(''); setPasteName(''); }}
+                        className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handlePasteSubmit}
+                        disabled={!pasteText.trim()}
+                        className="px-4 py-2 text-sm bg-arcadis-green text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Assess Content
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SharePoint Tab */}
+          {activeTab === 'sharepoint' && (
+            <SharePointBrowser onFileExtracted={handleSharePointFile} />
+          )}
         </div>
       </div>
-
-      {/* Paste Input */}
-      {pasteMode && (
-        <div className="bg-white rounded-lg shadow p-6 space-y-4">
-          <h3 className="font-semibold text-gray-800">Paste Document Content</h3>
-          <input
-            type="text"
-            value={pasteName}
-            onChange={(e) => setPasteName(e.target.value)}
-            placeholder="Document name (e.g., 'Thames Water RFP Q2 2026')"
-            className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-arcadis-green"
-          />
-          <textarea
-            value={pasteText}
-            onChange={(e) => setPasteText(e.target.value)}
-            placeholder="Paste the full document text here. The system will extract individual requirements and assess each against the EDAP II baseline..."
-            rows={10}
-            className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-arcadis-green resize-y font-mono"
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">
-              {pasteText.length > 0 ? `${pasteText.length} characters` : ''}
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setPasteMode(false); setPasteText(''); setPasteName(''); }}
-                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePasteSubmit}
-                disabled={!pasteText.trim()}
-                className="px-4 py-2 text-sm bg-arcadis-green text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Assess Content
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Aggregate Stats (when there are assessments) */}
       {assessments.length > 0 && (
