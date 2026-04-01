@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/generate-skills-index.js && vite",
+    "dev": "node scripts/generate-skills-index.js && vite --host",
     "build": "node scripts/generate-skills-index.js && tsc && vite build",
     "preview": "vite preview"
   },
