@@ -6,6 +6,7 @@ import RequestDetail from './components/RequestDetail';
 import GapAnalysis from './components/GapAnalysis';
 import RoadmapView from './components/RoadmapView';
 import UploadAssess from './components/UploadAssess';
+import PMSkillsDashboard from './components/PMSkillsDashboard';
 import { sampleRequests } from './data/sampleRequests';
 import { FeatureTag, GapClassification, AffectedModule, Priority } from './types';
 import {
@@ -16,6 +17,7 @@ import {
   Upload,
   Menu,
   X,
+  BookOpen,
 } from 'lucide-react';
 
 export default function App() {
@@ -51,6 +53,7 @@ export default function App() {
     { to: '/gap-analysis', label: 'Gap Analysis', icon: Search },
     { to: '/roadmap', label: 'Roadmap', icon: Map },
     { to: '/upload', label: 'Upload & Assess', icon: Upload },
+    { to: '/pm-skills', label: 'PM Skills', icon: BookOpen },
   ];
 
   return (
@@ -137,6 +140,7 @@ export default function App() {
           <Route path="/gap-analysis" element={<GapAnalysis requests={sampleRequests} />} />
           <Route path="/roadmap" element={<RoadmapView requests={sampleRequests} />} />
           <Route path="/upload" element={<UploadAssess />} />
+          <Route path="/pm-skills" element={<PMSkillsDashboard />} />
         </Routes>
       </main>
 
